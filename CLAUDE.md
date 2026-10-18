@@ -6,6 +6,7 @@ Rock/metal jump'n'run built with **Phaser 3 + Vite**. All graphics and audio are
 - `npm install` once, then `npm run dev` and open the printed URL.
 - `npm run build` writes a static build to `dist/`.
 - `npm run smoke -- <dir>` runs headless Edge/Chrome through the whole level with scripted input and teleports. It prints PASS/FAIL checks plus any console errors, and saves screenshots to `<dir>`.
+- Deploy: pushing to `master`/`main` runs `.github/workflows/deploy.yml`, which builds and publishes to GitHub Pages. The build is an installable offline web app (`public/manifest.webmanifest` and `public/sw.js`; the worker is only registered in production builds). `node scripts/make-icons.mjs` regenerates the app icons from the RiffBoi sprite.
 - URL flags: `?debug` shows arcade physics bodies. `?autostart` skips the "click to rock" screen; this only works with audio autoplay allowed.
 
 ## Architecture

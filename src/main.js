@@ -32,6 +32,22 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyM') audio.toggleMute();
 });
 
+// Offline support for the deployed build (not in dev, where it would cache stale modules).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  navigator.serviceWorker
+    .register('./sw.js')
+    .then(() => navigator.serviceWorker.ready)
+    .then(() => {
+      // The first visit loads the game before the worker is active, so cache those files now.
+      const urls = performance
+        .getEntriesByType('resource')
+        .map((r) => r.name)
+        .filter((u) => u.startsWith(location.origin));
+      return caches.open('riffboi-v1').then((c) => c.addAll(urls));
+    })
+    .catch(() => {});
+}
+
 // Phones: go fullscreen + landscape on the first tap (must run inside a real DOM gesture).
 if (isTouch) {
   const goFullscreen = () => {
