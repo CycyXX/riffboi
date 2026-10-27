@@ -28,6 +28,8 @@ window.game = new Phaser.Game({
   scene: [BootScene, TitleScene, GameScene, HUDScene, GameOverScene, VictoryScene],
 });
 
+window.__audio = audio; // for debugging / smoke tests
+
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyM') audio.toggleMute();
 });

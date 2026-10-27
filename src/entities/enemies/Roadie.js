@@ -42,6 +42,7 @@ export default class Roadie extends Enemy {
       vy,
       spin: 720,
       life: 3000,
+      owner: this,
       w: 8,
     });
     this.throwT = 280;

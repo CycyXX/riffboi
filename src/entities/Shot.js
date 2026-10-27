@@ -18,6 +18,8 @@ export default class Shot extends Phaser.Physics.Arcade.Sprite {
     this.spin = o.spin || 0;
     this.grow = o.grow || 0;
     this.hitSet = new Set();
+    this.owner = o.owner || null; // enemy that fired it (stomp fairness)
+    this.born = scene.time.now;
     this.setDepth(DEPTH.shots);
     if (o.tint) this.setTint(o.tint);
     if (o.flipX) this.setFlipX(true);

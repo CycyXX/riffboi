@@ -26,6 +26,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.shotCd = 0;
     this.shootT = 0;
     this.boostCd = 0;
+    this.stompGraceT = 0;
     this.dropT = 0;
     this.tossT = 0;
     this.tossed = false;
@@ -72,6 +73,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.shotCd -= dt;
     this.shootT -= dt;
     this.boostCd -= dt;
+    this.stompGraceT -= dt;
     this.dropT -= dt;
     this.tossT -= dt;
 
@@ -248,7 +250,11 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       w: 10,
       h: 14,
     });
-    audio.synth.riff(onBeat && !auto);
+    // Solo auto-fire is voiced by the sequencer (Music.soloStabs) so it stays perfectly on the grid.
+    if (!auto) {
+      const t = this.music.soundTime(onBeat);
+      audio.synth.riffStab(t, this.music.harmonyAt(t), onBeat);
+    }
     if (!auto) s.registerAttack(onBeat);
     s.burst('note', x, y - 4, 1);
   }
@@ -273,7 +279,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     });
     this.body.setVelocityX(this.body.velocity.x - this.facing * 110);
     this.knockT = 110;
-    audio.synth.powerChord(onBeat);
+    const t = this.music.soundTime(onBeat);
+    audio.synth.powerChord(t, this.music.harmonyAt(t), onBeat);
     s.cameras.main.shake(120, 0.006);
     s.burst('note', this.x, this.y - 6, 4);
     s.registerAttack(onBeat);
@@ -299,7 +306,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.soloBeats = SHRED.soloBeats;
     this.lastHalfBeat = Math.floor(this.music.beatPos() * 2);
     this.music.setLead(true);
-    audio.synth.solo();
+    this.music.setSoloStabs(true);
+    audio.synth.solo(this.music.harmonyAt());
     audio.synth.cheer(0.8, 3);
     s.events.emit('banner', 'GUITAR SOLO!!!', 0xffd040);
     s.cameras.main.flash(250, 255, 220, 120);
@@ -318,11 +326,13 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.scene.shred = 0;
     this.clearTint();
     this.music.setLead(!!this.scene.bossLead);
+    this.music.setSoloStabs(false);
   }
 
   // ---------------------------------------------------------------- damage & movement helpers
   hurt(dmg, srcX) {
-    if (this.dead || this.invulnT > 0 || this.soloActive) return false;
+    // stompGraceT: a short window after a stomp, so a simultaneous enemy attack can't punish it.
+    if (this.dead || this.invulnT > 0 || this.soloActive || this.stompGraceT > 0) return false;
     const s = this.scene;
     this.picks = Math.max(0, this.picks - dmg);
     this.invulnT = P.invulnMs;

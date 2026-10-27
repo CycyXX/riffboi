@@ -13,6 +13,7 @@ export default class TitleScene extends Phaser.Scene {
   create() {
     this.backdrop = new Backdrop(this);
     audio.music.setConfig({ song: 'main', drums: 2, bass: true, rhythm: true, lead: false });
+    audio.music.setSoloStabs(false);
     audio.synth.setCrowd(0.12);
 
     // stage floor strip

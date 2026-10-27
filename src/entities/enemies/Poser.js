@@ -29,6 +29,7 @@ export default class Poser extends Enemy {
         vx: dir * 125,
         vy: Math.max(-50, Math.min(50, dy * 0.5)),
         life: 2400,
+        owner: this,
         w: 7,
         h: 8,
       });

@@ -70,6 +70,8 @@ export default class Music {
     this.cfg = { song: 'main', drums: 0, bass: false, rhythm: false, lead: false };
     this.pending = null;
     this.riffPos = 0;
+    this.riffBase = 0; // step at which the current riff started (riffPos = step - riffBase)
+    this.soloStabs = false;
     this.leadIdx = 4;
     this.leadHold = 0;
   }
@@ -132,6 +134,32 @@ export default class Music {
     return this.playing && Math.abs(this.beatOffset()) <= win;
   }
 
+  // ---------- harmony for player sounds ----------
+  // Root note of the chord the band is playing at audio-context time `t`.
+  harmonyAt(t = this.now()) {
+    const riff = SONGS[this.cfg.song] || SONGS.main;
+    const step = Math.floor((t - this.startTime) / this.stepDur + 1e-4);
+    const len = riff.length;
+    let i = ((step - this.riffBase) % len + len) % len;
+    for (let k = 0; k < len; k++, i = (i - 1 + len) % len) {
+      if (riff[i]) return riff[i].n;
+    }
+    return 40; // silent song: stay on E
+  }
+
+  // When a player sound should play: on-beat hits pressed slightly early wait for the beat,
+  // so they land exactly on it. Everything else plays immediately.
+  soundTime(onBeat) {
+    const now = this.now();
+    if (!onBeat || !this.ctx) return now;
+    const beatT = this.startTime + Math.round(this.beatPos()) * this.beatDur;
+    return Math.max(now, beatT);
+  }
+
+  setSoloStabs(on) {
+    this.soloStabs = on;
+  }
+
   // ---------- sequencer ----------
   schedule() {
     const now = this.ctx.currentTime;
@@ -160,7 +188,10 @@ export default class Music {
       const intensityUp = this.pending.drums > this.cfg.drums;
       this.cfg = this.pending;
       this.pending = null;
-      if (songChanged) this.riffPos = 0;
+      if (songChanged) {
+        this.riffPos = 0;
+        this.riffBase = step;
+      }
       if (songChanged || intensityUp) crashNow = true;
     }
     const c = this.cfg;
@@ -186,6 +217,9 @@ export default class Music {
       if (c.rhythm) s.guitar(t, ev.n, dur, { mute: ev.mute, chord: ev.chord });
       if (c.bass) s.bass(t, ev.n - 12, dur);
     }
+
+    // Solo mode: the player's auto-fire stabs are sequenced here, so they sit exactly on the 8ths.
+    if (this.soloStabs && s16 % 2 === 0) s.riffStab(t, this.harmonyAt(t), s16 % 4 === 0, 0.7);
 
     // Procedural shred lead (solo mode / boss)
     if (c.lead) {

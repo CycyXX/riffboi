@@ -313,26 +313,28 @@ export default class Synth {
   }
 
   // ---------- sfx ----------
-  riff(onBeat) {
-    const t = this.now();
-    const notes = [52, 55, 57, 59];
-    const n = notes[(Math.random() * notes.length) | 0];
-    this.guitar(t, n, 0.13, { chord: true, vel: 0.9, out: this.gtrSfx.input });
-    if (onBeat) this.ding(t + 0.01);
+  // Player sounds are built on `root`, the band's current chord root (Music.harmonyAt),
+  // so every attack is in key: power chords only contain root, fifth and octave.
+
+  // Riff shot: a short power-chord stab one octave above the band, doubling its chord.
+  riffStab(t, root, onBeat, vel = 0.9) {
+    this.guitar(t, root + 12, 0.14, { chord: true, vel, out: this.gtrSfx.input });
+    if (onBeat) this.ding(t, root);
   }
 
-  powerChord(onBeat) {
-    const t = this.now();
-    this.guitar(t, 40, 0.9, { chord: true, vel: 1.4, out: this.gtrSfx.input });
-    this.guitar(t, 52, 0.9, { chord: true, vel: 0.8, out: this.gtrSfx.input });
+  // Power chord: the band's chord across two octaves plus a sub thump on the root.
+  powerChord(t, root, onBeat) {
+    this.guitar(t, root, 0.9, { chord: true, vel: 1.4, out: this.gtrSfx.input });
+    this.guitar(t, root + 12, 0.9, { chord: true, vel: 0.8, out: this.gtrSfx.input });
     this.noise({ t, dur: 0.6, type: 'highpass', freq: 3000, vol: 0.18 });
-    this.tone({ t, type: 'sine', f0: 110, f1: 40, dur: 0.3, vol: 0.5 });
-    if (onBeat) this.ding(t + 0.02);
+    this.tone({ t, type: 'sine', f0: midiHz(root + 12), f1: midiHz(root - 12), dur: 0.3, vol: 0.5 });
+    if (onBeat) this.ding(t, root);
   }
 
-  ding(t = this.now()) {
-    this.tone({ t, type: 'sine', f0: 1568, dur: 0.25, vol: 0.16 });
-    this.tone({ t: t + 0.04, type: 'sine', f0: 2349, dur: 0.22, vol: 0.1 });
+  // On-beat chime: the chord's root and fifth, high up, so it always rings in harmony.
+  ding(t = this.now(), root = 40) {
+    this.tone({ t, type: 'sine', f0: midiHz(root + 36), dur: 0.25, vol: 0.14 });
+    this.tone({ t: t + 0.03, type: 'sine', f0: midiHz(root + 43), dur: 0.22, vol: 0.09 });
   }
 
   jump() {
@@ -446,9 +448,9 @@ export default class Synth {
     this.tone({ type: 'square', f0: 880, f1: 1760, dur: 0.1, vol: 0.05 });
   }
 
-  solo() {
+  solo(root = 40) {
     const t = this.now();
-    this.guitar(t, 40, 1.2, { chord: true, vel: 1.4, out: this.gtrSfx.input });
+    this.guitar(t, root, 1.2, { chord: true, vel: 1.4, out: this.gtrSfx.input });
     this.tone({ t: t + 0.1, type: 'sawtooth', f0: 1200, f1: 2600, dur: 0.6, vol: 0.06 });
     this.noise({ t, dur: 1.2, type: 'highpass', freq: 3500, vol: 0.2 });
   }

@@ -95,6 +95,45 @@ try {
   await wait(100);
   await shot('03-power-chord');
 
+  // --- harmony: harmonyAt() must name the chord the band is actually playing
+  const harm = await ev(async () => {
+    const s = window.__audio.synth;
+    const m = window.__audio.music;
+    const played = [];
+    const bass = s.bass;
+    s.bass = (t, n, ...rest) => {
+      played.push([t, n + 12]);
+      return bass.call(s, t, n, ...rest);
+    };
+    await new Promise((r) => setTimeout(r, 3500));
+    s.bass = bass;
+    let bad = 0;
+    for (let i = 1; i < played.length; i++) {
+      const mid = (played[i - 1][0] + played[i][0]) / 2;
+      if (m.harmonyAt(mid) !== played[i - 1][1]) bad++;
+    }
+    return { notes: played.length, bad, roots: [...new Set(played.map((p) => p[1]))] };
+  });
+  check('player sounds follow the band chord', harm.notes > 10 && harm.bad === 0, JSON.stringify(harm));
+
+  // --- stomp fairness: landing on a poser the instant it fires must not hurt
+  const stompRes = await ev(async () => {
+    const g = window.__riff;
+    const p = g.player;
+    const PoserClass = g.enemies.getChildren().find((e) => e.texture.key === 'poser').constructor;
+    const e = new PoserClass(g, 100, 240);
+    p.respawn(100, 170);
+    p.invulnT = 0;
+    p.picks = 3;
+    p.body.setVelocityY(260);
+    e.awake = true;
+    e.onBeat(0); // fires a note straight into the falling player
+    const shots = g.enemyShots.getLength();
+    await new Promise((r) => setTimeout(r, 700));
+    return { shotFired: shots > 0, picks: p.picks, enemyHp: e.hp, enemyDead: e.dead };
+  });
+  check('stomp during enemy attack does not hurt', stompRes.shotFired && stompRes.picks === 3 && (stompRes.enemyDead || stompRes.enemyHp < 2), JSON.stringify(stompRes));
+
   // --- walk the tutorial for real: jump over the first gap
   await tp(40, 200);
   await wait(300);

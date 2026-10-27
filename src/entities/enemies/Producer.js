@@ -162,6 +162,7 @@ export default class Producer extends Enemy {
       vx: Math.cos(a) * speed,
       vy: Math.sin(a) * speed,
       life: 4500,
+      owner: this,
       spin: 200,
       w: 8,
       blend: 'ADD',

@@ -66,6 +66,7 @@ export default class GameScene extends Phaser.Scene {
     this.setupCamera();
 
     audio.music.setLead(false);
+    audio.music.setSoloStabs(false);
     this.lastBeat = audio.music.beat();
     this.scene.launch('HUD');
     window.__riff = this; // handy for debugging / smoke tests
@@ -162,6 +163,9 @@ export default class GameScene extends Phaser.Scene {
     });
     add.overlap(p, this.enemies, (pl, e) => this.onPlayerTouchEnemy(e));
     add.overlap(p, this.enemyShots, (pl, shot) => {
+      if (!shot.active) return;
+      // About to stomp the shooter? Let the stomp win; it crushes this shot.
+      if (shot.owner && this.isStomping(shot.owner, 16)) return;
       if (p.soloActive || p.hurt(1, shot.x)) {
         this.burst('spark', shot.x, shot.y, 4);
         shot.destroy();
@@ -428,15 +432,35 @@ export default class GameScene extends Phaser.Scene {
     if (!shot.pierce) shot.destroy();
   }
 
+  // Is the player coming down onto enemy `e` from above (or within `lead` px of landing on it)?
+  // Uses last frame's positions too, so an enemy hopping up into the player still counts.
+  isStomping(e, lead = 0) {
+    const pb = this.player.body;
+    const eb = e.body;
+    if (!e.active || e.dead || !e.stompable || !eb || this.player.dead) return false;
+    if (pb.velocity.y - eb.velocity.y <= 20) return false;
+    if (pb.right < eb.left - 2 || pb.left > eb.right + 2) return false;
+    const wasAbove = pb.prev.y + pb.height <= eb.prev.y + 6;
+    const depth = pb.bottom - eb.top;
+    return depth > -lead && (wasAbove || depth < 14);
+  }
+
   onPlayerTouchEnemy(e) {
     const p = this.player;
     if (!e.active || e.dead || p.dead) return;
     const pb = p.body;
-    const eb = e.body;
-    if (e.stompable && pb.velocity.y > 40 && pb.bottom - eb.top < 12) {
+    if (this.isStomping(e)) {
       const onBeat = audio.music.isOnBeat();
       const res = e.hurt(onBeat ? 4 : 2, p.x, { onBeat });
       p.bounce(onBeat ? 390 : 310);
+      p.stompGraceT = 250;
+      // Crush whatever this enemy just fired; it couldn't be dodged.
+      for (const s of this.enemyShots.getChildren().slice()) {
+        if (s.owner === e && this.time.now - s.born < 500) {
+          this.burst('spark', s.x, s.y, 4);
+          s.destroy();
+        }
+      }
       if (res !== 'deflect') {
         if (onBeat) this.registerAttack(true);
         this.addShred(SHRED.stomp);
